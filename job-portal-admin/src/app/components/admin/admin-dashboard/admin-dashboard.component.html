@@ -1,0 +1,210 @@
+
+
+<div class="admin-dashboard">
+  <div class="header">
+    <h1>Панель администратора</h1>
+    <button mat-raised-button color="warn" (click)="logout()">
+      Выйти
+    </button>
+  </div>
+
+  <mat-toolbar color="primary" class="main-toolbar"></mat-toolbar>
+
+  <div class="content" *ngIf="!loading; else loadingTemplate">
+    <div class="stats-cards">
+      <!-- Карточки статистики (без изменений) -->
+    </div>
+
+    <mat-tab-group class="section-tabs" (selectedTabChange)="onTabChange($event)">
+      <!-- Таблица пользователей -->
+      <mat-tab label="Пользователи">
+        <mat-card class="section-card">
+          <mat-card-header>
+            <mat-card-title>Управление пользователями</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <table mat-table [dataSource]="usersDataSource" class="mat-elevation-z8">
+              <!-- Колонка Имя -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Имя</th>
+                <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+              </ng-container>
+
+              <!-- Колонка Email -->
+              <ng-container matColumnDef="email">
+                <th mat-header-cell *matHeaderCellDef>Email</th>
+                <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+              </ng-container>
+
+              <!-- Колонка Роль -->
+              <ng-container matColumnDef="role">
+                <th mat-header-cell *matHeaderCellDef>Роль</th>
+                <td mat-cell *matCellDef="let user">{{ user.role }}</td>
+              </ng-container>
+
+              <!-- Колонка Действия -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Действия</th>
+                <td mat-cell *matCellDef="let user">
+                  <button mat-raised-button class="edit-button" (click)="openEditDialog(user)">
+                    Редактировать
+                  </button>
+                  <button mat-raised-button class="delete-button" (click)="deleteUser(user.id)">
+                    Удалить
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="['name', 'email', 'role', 'actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['name', 'email', 'role', 'actions']"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+      </mat-tab>
+
+     <!-- Таблица вакансий -->
+<mat-tab label="Вакансии">
+  <mat-card class="section-card">
+    <mat-card-header>
+      <mat-card-title>Управление вакансиями</mat-card-title>
+      <button mat-raised-button class="add-button" (click)="openCreateVacancyDialog()">
+        Добавить вакансию
+      </button>
+    </mat-card-header>
+    <mat-card-content>
+      <table mat-table [dataSource]="vacanciesDataSource" class="mat-elevation-z8">
+        <!-- Обновленные колонки -->
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Название</th>
+          <td mat-cell *matCellDef="let vac">{{ vac.Title || 'Без названия' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="company">
+          <th mat-header-cell *matHeaderCellDef>Компания</th>
+          <td mat-cell *matCellDef="let vac">{{ vac.Company || 'Не указана' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="location">
+          <th mat-header-cell *matHeaderCellDef>Локация</th>
+          <td mat-cell *matCellDef="let vac">{{ vac.Location || 'Не указана' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="requirements">
+          <th mat-header-cell *matHeaderCellDef>Требования</th>
+          <td mat-cell *matCellDef="let vac">
+            {{ (vac.requirements | slice:0:50) + (vac.Requirements?.length > 50 ? '...' : '') }}
+            <button *ngIf="vac.requirements?.length > 50" mat-icon-button (click)="showFullText(vac.requirements)">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="salary">
+          <th mat-header-cell *matHeaderCellDef>Зарплата</th>
+          <td mat-cell *matCellDef="let vac">{{ vac.Salary }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="employmentType">
+          <th mat-header-cell *matHeaderCellDef>Тип занятости</th>
+          <td mat-cell *matCellDef="let vac">{{vac.EmploymentType}}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Статус</th>
+          <td mat-cell *matCellDef="let vac">
+            <mat-chip [color]="vac.status === 'active' ? 'primary' : 'warn'">
+              {{ vac.Status === 'active' ? 'Активна' : 'Закрыта' }}
+            </mat-chip>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Действия</th>
+          <td mat-cell *matCellDef="let vac">
+            <button mat-raised-button class="edit-button" (click)="openEditVacancyDialog(vac)">
+              Редактировать
+            </button>
+            <button mat-raised-button class="delete-button" (click)="deleteVacancy(vac.id)">
+              Удалить
+            </button>
+            <button mat-icon-button (click)="openVacancyDetails(vac)">
+              <mat-icon>info</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['title', 'company', 'location', 'requirements', 'salary', 'employmentType', 'status', 'actions']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['title', 'company', 'location', 'requirements', 'salary', 'employmentType', 'status', 'actions']"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+</mat-tab>
+
+      <!-- Таблица резюме -->
+      <mat-tab label="Резюме">
+        <mat-card class="section-card">
+          <mat-card-header>
+            <mat-card-title>Управление резюме</mat-card-title>
+            <button mat-raised-button class="add-button" (click)="openCreateResumeDialog()">
+              Добавить резюме
+            </button>
+          </mat-card-header>
+          <mat-card-content>
+            <table mat-table [dataSource]="resumesDataSource" class="mat-elevation-z8">
+              <!-- Колонка ID -->
+              <ng-container matColumnDef="id">
+                <th mat-header-cell *matHeaderCellDef>ID</th>
+                <td mat-cell *matCellDef="let resume">{{ resume.id }}</td>
+              </ng-container>
+
+              <!-- Колонка Название -->
+              <ng-container matColumnDef="title">
+                <th mat-header-cell *matHeaderCellDef>Название</th>
+                <td mat-cell *matCellDef="let resume">{{ resume.title }}</td>
+              </ng-container>
+
+              <!-- Колонка ID пользователя -->
+              <ng-container matColumnDef="userId">
+                <th mat-header-cell *matHeaderCellDef>ID пользователя</th>
+                <td mat-cell *matCellDef="let resume">{{ resume.userId }}</td>
+              </ng-container>
+
+              <!-- Колонка Навыки -->
+              <ng-container matColumnDef="skills">
+                <th mat-header-cell *matHeaderCellDef>Навыки</th>
+                <td mat-cell *matCellDef="let resume">{{ resume.skills.join(', ') }}</td>
+              </ng-container>
+
+              <!-- Колонка Действия -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Действия</th>
+                <td mat-cell *matCellDef="let resume">
+                  <button mat-raised-button class="edit-button" (click)="openEditResumeDialog(resume)">
+                    Редактировать
+                  </button>
+                  <button mat-raised-button class="delete-button" (click)="deleteResume(resume.id)">
+                    Удалить
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="['id', 'title', 'userId', 'skills', 'actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['id', 'title', 'userId', 'skills', 'actions']"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
+
+
+  <ng-template #loadingTemplate>
+    <div class="loading-spinner">
+      <mat-spinner></mat-spinner>
+    </div>
+  </ng-template>
+
+  <div *ngIf="error" class="error-message">
+    <mat-error>{{error}}</mat-error>
+  </div>
+</div>
