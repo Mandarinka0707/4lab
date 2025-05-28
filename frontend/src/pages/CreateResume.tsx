@@ -58,17 +58,39 @@ const CreateResume: React.FC = () => {
     setError(null);
     setLoading(true);
 
+    // Validate required fields
+    if (!formData.title.trim() || !formData.description.trim() || 
+        !formData.experience.trim() || !formData.education.trim()) {
+      setError('Пожалуйста, заполните все обязательные поля');
+      setLoading(false);
+      return;
+    }
+
+    // Validate skills
+    if (formData.skills.length === 0) {
+      setError('Добавьте хотя бы один навык');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await api.post('/resumes', {
-        ...formData,
+      const resumeData = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        skills: formData.skills,
+        experience: formData.experience.trim(),
+        education: formData.education.trim(),
         status: 'active'
-      });
+      };
+
+      console.log('Sending resume data:', resumeData);
+      const response = await api.post('/resumes', resumeData);
 
       console.log('Resume created:', response.data);
       navigate('/resumes');
     } catch (err: any) {
       console.error('Error creating resume:', err);
-      setError(err.response?.data?.error || 'Failed to create resume');
+      setError(err.response?.data?.error || 'Ошибка при создании резюме');
     } finally {
       setLoading(false);
     }

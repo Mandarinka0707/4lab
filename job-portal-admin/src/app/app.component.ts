@@ -1,16 +1,12 @@
 import { Component } from '@angular/core';
-import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [MatToolbarModule, RouterModule],
+  imports: [RouterModule],
   template: `
     <div class="app-container">
-      <mat-toolbar color="primary">
-        <span>Job Portal Admin Panel</span>
-      </mat-toolbar>
       <main class="content">
         <router-outlet></router-outlet>
       </main>
@@ -23,16 +19,7 @@ import { RouterModule } from '@angular/router';
       height: 100vh;
     }
     
-    mat-toolbar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 2;
-    }
-    
     .content {
-      margin-top: 64px;
       padding: 20px;
       flex: 1;
     }

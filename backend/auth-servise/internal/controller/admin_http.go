@@ -66,8 +66,7 @@ func (c *AdminController) DeleteVacancy(ctx *gin.Context) {
 		return
 	}
 
-	// For admin, we pass 0 as employerID to bypass the ownership check
-	if err := c.vacancyUsecase.Delete(ctx, id, 0); err != nil {
+	if err := c.vacancyUsecase.AdminDelete(ctx, id); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -195,21 +194,52 @@ func (c *AdminController) AdminUpdateVacancy(ctx *gin.Context) {
         return
     }
 
-    var vacancy entity.Vacancy
-    if err := ctx.ShouldBindJSON(&vacancy); err != nil {
+    var req UpdateVacancyRequest
+    if err := ctx.ShouldBindJSON(&req); err != nil {
+        fmt.Printf("Error binding JSON: %v\n", err)
         ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 
-    // Set the ID from the URL
-    vacancy.ID = id
-
-    // Call the admin update method
-    if err := c.vacancyUsecase.AdminUpdate(ctx.Request.Context(), &vacancy); err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+    // Get existing vacancy
+    existingVacancy, err := c.vacancyUsecase.GetByID(ctx.Request.Context(), id)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get vacancy: %v", err)})
+        return
+    }
+    if existingVacancy == nil {
+        ctx.JSON(http.StatusNotFound, gin.H{"error": "vacancy not found"})
         return
     }
 
+    // Update fields while preserving existing data
+    vacancy := &entity.Vacancy{
+        ID:               id,
+        EmployerID:       req.EmployerID,
+        Title:            req.Title,
+        Description:      req.Description,
+        Requirements:     req.Requirements,
+        Responsibilities: req.Responsibilities,
+        Salary:          req.Salary,
+        Location:        req.Location,
+        EmploymentType:  req.EmploymentType,
+        Company:         req.Company,
+        Status:         req.Status,
+        Skills:         req.Skills,
+        Education:      req.Education,
+        CreatedAt:      existingVacancy.CreatedAt,
+        UpdatedAt:      time.Now(),
+    }
+
+    fmt.Printf("Updating vacancy with data: %+v\n", vacancy)
+
+    if err := c.vacancyUsecase.AdminUpdate(ctx.Request.Context(), vacancy); err != nil {
+        fmt.Printf("Error updating vacancy: %v\n", err)
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to update vacancy: %v", err)})
+        return
+    }
+
+    fmt.Printf("Successfully updated vacancy with ID: %d\n", vacancy.ID)
     ctx.JSON(http.StatusOK, vacancy)
 }
 
@@ -270,4 +300,116 @@ func (c *AdminController) CreateUser(ctx *gin.Context) {
 		"role":      user.Role,
 		"createdAt": user.CreatedAt,
 	})
+}
+
+// AdminCreateVacancy creates a new vacancy with admin privileges
+func (c *AdminController) AdminCreateVacancy(ctx *gin.Context) {
+    var req CreateVacancyRequest
+    if err := ctx.ShouldBindJSON(&req); err != nil {
+        fmt.Printf("Error binding JSON: %v\n", err)
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Validate required fields
+    if req.Title == "" || req.Company == "" || req.Location == "" || req.EmploymentType == "" {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "missing required fields"})
+        return
+    }
+
+    // Ensure skills is initialized
+    if req.Skills == nil {
+        req.Skills = []string{}
+    }
+
+    vacancy := &entity.Vacancy{
+        Title:            req.Title,
+        Description:      req.Description,
+        Requirements:     req.Requirements,
+        Responsibilities: req.Responsibilities,
+        Salary:          req.Salary,
+        Location:        req.Location,
+        EmploymentType:  req.EmploymentType,
+        Company:         req.Company,
+        Status:         "active",
+        Skills:         req.Skills,
+        Education:      req.Education,
+        EmployerID:     req.EmployerID,
+    }
+
+    fmt.Printf("Creating vacancy with data: %+v\n", vacancy)
+
+    if err := c.vacancyUsecase.AdminCreate(ctx.Request.Context(), vacancy); err != nil {
+        fmt.Printf("Error creating vacancy: %v\n", err)
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create vacancy: %v", err)})
+        return
+    }
+
+    fmt.Printf("Successfully created vacancy with ID: %d\n", vacancy.ID)
+    ctx.JSON(http.StatusCreated, vacancy)
+}
+
+// AdminUpdateResume updates a resume with admin privileges
+func (c *AdminController) AdminUpdateResume(ctx *gin.Context) {
+    id, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid resume id"})
+        return
+    }
+
+    var resume entity.Resume
+    if err := ctx.ShouldBindJSON(&resume); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Set the ID from the URL
+    resume.ID = id
+
+    // Call the admin update method
+    if err := c.resumeUsecase.AdminUpdate(ctx.Request.Context(), &resume); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    ctx.JSON(http.StatusOK, resume)
+}
+
+// AdminCreateResume creates a new resume with admin privileges
+func (c *AdminController) AdminCreateResume(ctx *gin.Context) {
+    var resume entity.Resume
+    if err := ctx.ShouldBindJSON(&resume); err != nil {
+        fmt.Printf("Error binding JSON: %v\n", err)
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+
+    // Устанавливаем дефолтные значения
+    resume.Status = "active"
+    
+    // Если user_id не указан, используем дефолтное значение (например, ID админа)
+    if resume.UserID == 0 {
+        resume.UserID = 1 // ID админа из базы данных
+    }
+
+    // Проверяем существование пользователя
+    user, err := c.userUsecase.GetByID(ctx, resume.UserID)
+    if err != nil {
+        fmt.Printf("Error getting user: %v\n", err)
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to get user: %v", err)})
+        return
+    }
+    if user == nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "specified user does not exist"})
+        return
+    }
+
+    if err := c.resumeUsecase.AdminCreate(ctx.Request.Context(), &resume); err != nil {
+        fmt.Printf("Error creating resume: %v\n", err)
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("failed to create resume: %v", err)})
+        return
+    }
+
+    fmt.Printf("Successfully created resume with ID: %d\n", resume.ID)
+    ctx.JSON(http.StatusCreated, resume)
 }

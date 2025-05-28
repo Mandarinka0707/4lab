@@ -17,7 +17,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatChipsModule } from '@angular/material/chips';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AdminService } from '../../../services/admin.service';
-import { User, Vacancy, Resume } from '../../../interfaces';
+import { User, Vacancy, Resume } from '../../../interfaces/interfaces';
 import { firstValueFrom } from 'rxjs';
 import { CreateUserDialogComponent } from './create-user-dialog.component';
 import { CreateVacancyDialogComponent } from './create-vacancy-dialog.component';
@@ -48,6 +48,8 @@ import { TextDialogComponent } from './text-dialog.component';
     MatChipsModule,
     ReactiveFormsModule,
     CreateUserDialogComponent,
+    CreateVacancyDialogComponent,
+    CreateResumeDialogComponent,
     VacancyDetailsDialogComponent,
     TextDialogComponent 
   ],
@@ -120,6 +122,7 @@ export class AdminDashboardComponent implements OnInit {
       ]);
       console.log('AdminDashboardComponent: Received data:', { users, vacancies, resumes });
       console.log('Raw vacancies data from backend:', vacancies);
+      console.log('RESUME', resumes);
       // Transform data to match interface
       this.users = (users || []).map(user => ({
         id: user.id || 0,
@@ -128,33 +131,33 @@ export class AdminDashboardComponent implements OnInit {
         role: user.role || ''
       }));
 
-      // В методе loadData()
       this.vacancies = (vacancies || []).map(vacancy => ({
         ID: vacancy.ID || 0,
         Title: vacancy.Title || 'Без названия',
-        Description: vacancy.Description || '',
         Company: vacancy.Company || 'Не указана',
-        Location: vacancy.Location || 'Не указана',
-        Salary: Number(vacancy.Salary) || 0,
+        Description: vacancy.Description || '',
         Requirements: vacancy.Requirements || 'Требования не указаны',
         Responsibilities: vacancy.Responsibilities || 'Обязанности не указаны',
+        Salary: Number(vacancy.Salary) || 0,
+        Location: vacancy.Location || 'Не указана',
+        EmploymentType: vacancy.EmploymentType || '',
+        EmployerID: vacancy.EmployerID || 0,
+        Status: vacancy.Status || 'active',
         Skills: vacancy.Skills || [],
         Education: vacancy.Education || '',
-        EmploymentType: vacancy.EmploymentType || '',
-        Status: vacancy.Status || 'active',
-        EmployerID: vacancy.EmployerID || 0,  // Исправлено поле
         CreatedAt: vacancy.CreatedAt || '',
-        UpdatedAt: vacancy.UpdatedAt || ''                                                                                                            
+        UpdatedAt: vacancy.UpdatedAt || ''
       }));
 
       this.resumes = (resumes || []).map(resume => ({
-        id: resume.id || 0,
-        title: resume.title || '',
-        description: resume.description || '',
+        id: resume.id,
         userId: resume.userId || 0,
-        skills: resume.skills || [],
-        education: resume.education || '',
+        title: resume.title,
+        description: resume.description,
         experience: resume.experience || '',
+        education: resume.education || '',
+        skills: resume.skills || [],
+        status: resume.status || 'active',
         createdAt: resume.createdAt || '',
         updatedAt: resume.updatedAt || ''
       }));
@@ -256,42 +259,93 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // Vacancy CRUD operations
-  openCreateVacancyDialog() {
-    this.vacancyForm.reset();
+  openCreateVacancyDialog(): void {
     const dialogRef = this.dialog.open(CreateVacancyDialogComponent, {
-      data: { form: this.vacancyForm }
+      width: '600px',
+      data: { isEdit: false }
     });
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.createVacancy();
+        // Форматируем данные перед отправкой
+        const vacancyData = {
+          Title: result.Title,
+          Company: result.Company,
+          Description: result.Description,
+          Requirements: result.Requirements,
+          Responsibilities: result.Responsibilities,
+          Salary: Number(result.Salary),
+          Location: result.Location,
+          EmploymentType: result.EmploymentType,
+          Status: result.Status || 'active',
+          Skills: Array.isArray(result.Skills) ? result.Skills : [],
+          Education: result.Education || '',
+          EmployerID: 1 // Set a default employer ID
+        };
+
+        console.log('Sending vacancy data:', vacancyData);
+        this.adminService.createVacancy(vacancyData).subscribe({
+          next: (vacancy) => {
+            console.log('Vacancy created:', vacancy);
+            this.vacancies.push(vacancy);
+            this.vacanciesDataSource.data = [...this.vacancies];
+            this.snackBar.open('Вакансия успешно создана', 'Закрыть', {
+              duration: 3000
+            });
+          },
+          error: (error) => {
+            console.error('Error creating vacancy:', error);
+            this.snackBar.open('Ошибка при создании вакансии', 'Закрыть', {
+              duration: 3000
+            });
+          }
+        });
       }
     });
   }
 
   openEditVacancyDialog(vacancy: Vacancy) {
-    // Reset form and patch values
-    this.vacancyForm.reset();
-    this.vacancyForm.patchValue({
-      Title: vacancy.Title,
-      Company: vacancy.Company,
-      Description: vacancy.Description,
-      Requirements: vacancy.Requirements,
-      Responsibilities: vacancy.Responsibilities,
-      Salary: vacancy.Salary,
-      Location: vacancy.Location,
-      EmploymentType: vacancy.EmploymentType,
-      Status: vacancy.Status,
-      Skills: vacancy.Skills
-    });
-    
+    console.log('Opening edit dialog for vacancy:', vacancy);
     const dialogRef = this.dialog.open(CreateVacancyDialogComponent, {
-      data: { form: this.vacancyForm, isEdit: true },
-      width: '600px'
+      width: '600px',
+      data: {
+        isEdit: true,
+        vacancy: {
+          ...vacancy,
+          // Ensure all fields are properly formatted
+          Skills: Array.isArray(vacancy.Skills) ? vacancy.Skills : (vacancy.Skills ? String(vacancy.Skills).split(',').map(s => s.trim()) : []),
+          Salary: Number(vacancy.Salary),
+          Status: vacancy.Status || 'active'
+        }
+      }
     });
-    
+
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.updateVacancy(vacancy.ID);
+        console.log('Updating vacancy with data:', result);
+        // Preserve the EmployerID and ID when updating
+        const updateData = {
+          ...result,
+          ID: vacancy.ID,
+          EmployerID: vacancy.EmployerID,
+          Skills: Array.isArray(result.Skills) ? result.Skills : (result.Skills ? result.Skills.split(',').map((s: string) => s.trim()) : [])
+        };
+        
+        this.adminService.updateVacancy(vacancy.ID, updateData).subscribe({
+          next: (updatedVacancy) => {
+            console.log('Vacancy updated successfully:', updatedVacancy);
+            const index = this.vacancies.findIndex(v => v.ID === vacancy.ID);
+            if (index !== -1) {
+              this.vacancies[index] = updatedVacancy;
+              this.vacanciesDataSource.data = [...this.vacancies];
+            }
+            this.showSnackBar('Вакансия успешно обновлена', 'success');
+          },
+          error: (error) => {
+            console.error('Error updating vacancy:', error);
+            this.showSnackBar('Ошибка при обновлении вакансии', 'error');
+          }
+        });
       }
     });
   }
@@ -310,35 +364,12 @@ export class AdminDashboardComponent implements OnInit {
     }
   }
 
-  async updateVacancy(vacancyId: number) {
-    if (this.vacancyForm.valid) {
-      try {
-        const data = {
-          ...this.vacancyForm.value,
-          isAdmin: true,
-          ID: vacancyId
-        };
-        const updatedVacancy = await firstValueFrom(this.adminService.updateVacancy(vacancyId, data));
-        
-        const index = this.vacancies.findIndex(v => v.ID === vacancyId);
-        if (index !== -1) {
-          this.vacancies[index] = updatedVacancy;
-        }
-        this.vacanciesDataSource.data = this.vacancies;
-        this.showSnackBar('Вакансия успешно обновлена', 'success');
-        this.dialog.closeAll();
-      } catch (error) {
-        console.error('Error updating vacancy:', error);
-        this.showSnackBar('Ошибка при обновлении вакансии', 'error');
-      }
-    }
-  }
-
   // Resume CRUD operations
   openCreateResumeDialog() {
     this.resumeForm.reset();
     this.skills = [];
     const dialogRef = this.dialog.open(CreateResumeDialogComponent, {
+      width: '600px',
       data: { form: this.resumeForm, skills: this.skills }
     });
     dialogRef.afterClosed().subscribe(result => {
@@ -352,6 +383,7 @@ export class AdminDashboardComponent implements OnInit {
     this.resumeForm.patchValue(resume);
     this.skills = [...resume.skills];
     const dialogRef = this.dialog.open(CreateResumeDialogComponent, {
+      width: '600px',
       data: { form: this.resumeForm, skills: this.skills }
     });
     dialogRef.afterClosed().subscribe(result => {
@@ -362,33 +394,51 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   async createResume(data: any) {
-    if (this.resumeForm.valid) {
-      try {
-        const newResume = await firstValueFrom(this.adminService.createResume(data));
-        this.resumes.push(newResume);
-        this.resumesDataSource.data = this.resumes;
-        this.showSnackBar('Resume created successfully', 'success');
-        this.dialog.closeAll();
-      } catch (error) {
-        this.showSnackBar('Failed to create resume', 'error');
-      }
+    try {
+      const formData = {
+        title: data.title,
+        description: data.description,
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        status: 'active',
+        experience: data.experience || '',
+        education: data.education || ''
+      };
+
+      console.log('Sending resume data:', formData);
+      const newResume = await firstValueFrom(this.adminService.createResume(formData));
+      this.resumes.push(newResume);
+      this.resumesDataSource.data = this.resumes;
+      this.showSnackBar('Резюме успешно создано', 'success');
+      this.dialog.closeAll();
+    } catch (error) {
+      console.error('Error creating resume:', error);
+      this.showSnackBar('Ошибка при создании резюме', 'error');
     }
   }
 
   async updateResume(resumeId: number, data: any) {
-    if (this.resumeForm.valid) {
-      try {
-        const updatedResume = await firstValueFrom(this.adminService.updateResume(resumeId, data));
-        const index = this.resumes.findIndex(r => r.id === resumeId);
-        if (index !== -1) {
-          this.resumes[index] = updatedResume;
-        }
-        this.resumesDataSource.data = this.resumes;
-        this.showSnackBar('Resume updated successfully', 'success');
-        this.dialog.closeAll();
-      } catch (error) {
-        this.showSnackBar('Failed to update resume', 'error');
+    try {
+      const formData = {
+        title: data.title,
+        description: data.description,
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        status: data.status || 'active',
+        experience: data.experience || '',
+        education: data.education || ''
+      };
+
+      console.log('Sending resume update data:', formData);
+      const updatedResume = await firstValueFrom(this.adminService.updateResume(resumeId, formData));
+      const index = this.resumes.findIndex(r => r.id === resumeId);
+      if (index !== -1) {
+        this.resumes[index] = updatedResume;
+        this.resumesDataSource.data = [...this.resumes];
       }
+      this.showSnackBar('Резюме успешно обновлено', 'success');
+      this.dialog.closeAll();
+    } catch (error) {
+      console.error('Error updating resume:', error);
+      this.showSnackBar('Ошибка при обновлении резюме', 'error');
     }
   }
 

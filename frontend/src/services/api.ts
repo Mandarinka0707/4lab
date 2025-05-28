@@ -130,8 +130,39 @@ export const vacancies = {
   },
 
   getById: async (id: string) => {
-    const response = await api.get(`/vacancies/${id}`);
-    return response.data;
+    console.log('Fetching vacancy with ID:', id);
+    try {
+      const response = await api.get(`/vacancies/${id}`);
+      console.log('Raw vacancy response:', response.data);
+      
+      // Transform the response data to ensure consistent field names
+      const transformedData = {
+        id: response.data.ID || response.data.id,
+        employerId: response.data.EmployerID || response.data.employerId,
+        title: response.data.Title || response.data.title,
+        description: response.data.Description || response.data.description,
+        requirements: response.data.Requirements || response.data.requirements,
+        responsibilities: response.data.Responsibilities || response.data.responsibilities,
+        salary: response.data.Salary || response.data.salary,
+        location: response.data.Location || response.data.location,
+        employmentType: response.data.EmploymentType || response.data.employmentType,
+        company: response.data.Company || response.data.company,
+        status: response.data.Status || response.data.status || 'active',
+        skills: Array.isArray(response.data.Skills) ? response.data.Skills : 
+               Array.isArray(response.data.skills) ? response.data.skills : [],
+        education: response.data.Education || response.data.education
+      };
+      
+      console.log('Transformed vacancy data:', transformedData);
+      return transformedData;
+    } catch (error: any) {
+      console.error('Error fetching vacancy:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      throw error;
+    }
   },
 
   create: async (data: any) => {
@@ -154,7 +185,27 @@ export const vacancies = {
   update: async (id: string, data: any) => {
     console.log('Updating vacancy with data:', { id, data });
     try {
-      const response = await api.put(`/vacancies/${id}`, data);
+      // Transform data to match backend expectations
+      const payload = {
+        ID: parseInt(String(data.ID || data.id)),
+        EmployerID: parseInt(String(data.EmployerID || data.employerId)),
+        Title: data.Title || data.title,
+        Company: data.Company || data.company,
+        Description: data.Description || data.description,
+        Requirements: Array.isArray(data.Requirements || data.requirements) 
+          ? (data.Requirements || data.requirements).join('\n') 
+          : data.Requirements || data.requirements,
+        Responsibilities: data.Responsibilities || data.responsibilities,
+        Salary: parseInt(String(data.Salary || data.salary)),
+        Location: data.Location || data.location,
+        EmploymentType: data.EmploymentType || data.employmentType,
+        Status: data.Status || data.status || 'active',
+        Skills: data.Skills || data.skills || [],
+        Education: data.Education || data.education || ''
+      };
+      
+      console.log('Sending payload to backend:', payload);
+      const response = await api.put(`/vacancies/${id}`, payload);
       console.log('Vacancy update response:', response);
       return response.data;
     } catch (error: any) {

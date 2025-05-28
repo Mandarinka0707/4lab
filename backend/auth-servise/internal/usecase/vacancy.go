@@ -21,6 +21,8 @@ type VacancyUsecaseInterface interface {
 	Update(ctx context.Context, vacancy *entity.Vacancy) error
 	Delete(ctx context.Context, id int64, employerID int64) error
 	AdminUpdate(ctx context.Context, vacancy *entity.Vacancy) error
+	AdminDelete(ctx context.Context, id int64) error
+	AdminCreate(ctx context.Context, vacancy *entity.Vacancy) error
 }
 
 type VacancyUsecase struct {
@@ -176,32 +178,74 @@ func (uc *VacancyUsecase) Delete(ctx context.Context, id int64, employerID int64
 	fmt.Printf("Vacancy deleted successfully\n")
 	return nil
 }
+
 func (uc *VacancyUsecase) AdminUpdate(ctx context.Context, vacancy *entity.Vacancy) error {
-    fmt.Printf("Starting admin vacancy update for ID: %d\n", vacancy.ID)
+	fmt.Printf("Starting admin vacancy update for ID: %d\n", vacancy.ID)
 
-    // Проверяем существование вакансии
-    existingVacancy, err := uc.vacancyRepo.GetByID(ctx, vacancy.ID)
-    if err != nil {
-        fmt.Printf("Error getting existing vacancy: %v\n", err)
-        return err
-    }
-    if existingVacancy == nil {
-        fmt.Printf("Vacancy not found: %d\n", vacancy.ID)
-        return fmt.Errorf("vacancy not found")
-    }
+	// Проверяем существование вакансии
+	existingVacancy, err := uc.vacancyRepo.GetByID(ctx, vacancy.ID)
+	if err != nil {
+		fmt.Printf("Error getting existing vacancy: %v\n", err)
+		return err
+	}
+	if existingVacancy == nil {
+		fmt.Printf("Vacancy not found: %d\n", vacancy.ID)
+		return fmt.Errorf("vacancy not found")
+	}
 
-    // Для админа пропускаем проверку на employerID
-    fmt.Printf("Admin updating vacancy in repository\n")
-    
-    // Сохраняем оригинального работодателя
-    vacancy.EmployerID = existingVacancy.EmployerID
-    
-    err = uc.vacancyRepo.Update(ctx, vacancy)
-    if err != nil {
-        fmt.Printf("Error updating vacancy in repository: %v\n", err)
-        return err
-    }
+	// Для админа пропускаем проверку на employerID
+	fmt.Printf("Admin updating vacancy in repository\n")
+	
+	// Сохраняем оригинального работодателя
+	vacancy.EmployerID = existingVacancy.EmployerID
+	
+	err = uc.vacancyRepo.Update(ctx, vacancy)
+	if err != nil {
+		fmt.Printf("Error updating vacancy in repository: %v\n", err)
+		return err
+	}
 
-    fmt.Printf("Vacancy updated by admin successfully\n")
-    return nil
+	fmt.Printf("Vacancy updated by admin successfully\n")
+	return nil
+}
+
+func (uc *VacancyUsecase) AdminDelete(ctx context.Context, id int64) error {
+	fmt.Printf("Starting admin vacancy deletion for ID: %d\n", id)
+
+	// Проверяем существование вакансии
+	existingVacancy, err := uc.vacancyRepo.GetByID(ctx, id)
+	if err != nil {
+		fmt.Printf("Error getting existing vacancy: %v\n", err)
+		return err
+	}
+	if existingVacancy == nil {
+		fmt.Printf("Vacancy not found: %d\n", id)
+		return fmt.Errorf("vacancy not found")
+	}
+
+	// Для админа пропускаем проверку на employerID
+	fmt.Printf("Admin deleting vacancy in repository\n")
+	err = uc.vacancyRepo.Delete(ctx, id)
+	if err != nil {
+		fmt.Printf("Error deleting vacancy in repository: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Vacancy deleted by admin successfully\n")
+	return nil
+}
+
+func (uc *VacancyUsecase) AdminCreate(ctx context.Context, vacancy *entity.Vacancy) error {
+	fmt.Printf("Starting admin vacancy creation\n")
+
+	// Для админа пропускаем проверку на роль employer
+	fmt.Printf("Creating vacancy in repository\n")
+	err := uc.vacancyRepo.Create(ctx, vacancy)
+	if err != nil {
+		fmt.Printf("Error creating vacancy in repository: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Vacancy created successfully\n")
+	return nil
 }

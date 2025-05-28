@@ -17,6 +17,8 @@ type ResumeUsecaseInterface interface {
 	GetAllResumes(ctx context.Context) ([]*entity.Resume, error)
 	Delete(ctx context.Context, id int64) error
 	GetAll(ctx context.Context) ([]*entity.Resume, error)
+	AdminUpdate(ctx context.Context, resume *entity.Resume) error
+	AdminCreate(ctx context.Context, resume *entity.Resume) error
 }
 
 type ResumeUsecase struct {
@@ -83,10 +85,55 @@ func (uc *ResumeUsecase) GetAllResumes(ctx context.Context) ([]*entity.Resume, e
 	return uc.resumeRepo.GetAll()
 }
 
-func (u *ResumeUsecase) Delete(ctx context.Context, id int64) error {
-	return u.resumeRepo.Delete(ctx, id)
+func (uc *ResumeUsecase) Delete(ctx context.Context, id int64) error {
+	return uc.resumeRepo.Delete(ctx, id)
 }
 
 func (uc *ResumeUsecase) GetAll(ctx context.Context) ([]*entity.Resume, error) {
 	return uc.GetAllResumes(ctx)
+}
+
+func (uc *ResumeUsecase) AdminUpdate(ctx context.Context, resume *entity.Resume) error {
+	fmt.Printf("Starting admin resume update for ID: %d\n", resume.ID)
+
+	// Проверяем существование резюме
+	existingResume, err := uc.resumeRepo.GetResumeByID(ctx, resume.ID)
+	if err != nil {
+		fmt.Printf("Error getting existing resume: %v\n", err)
+		return err
+	}
+	if existingResume == nil {
+		fmt.Printf("Resume not found: %d\n", resume.ID)
+		return fmt.Errorf("resume not found")
+	}
+
+	// Для админа пропускаем проверку на userID
+	fmt.Printf("Admin updating resume in repository\n")
+	
+	// Сохраняем оригинального пользователя
+	resume.UserID = existingResume.UserID
+	
+	err = uc.resumeRepo.Update(ctx, resume)
+	if err != nil {
+		fmt.Printf("Error updating resume in repository: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Resume updated by admin successfully\n")
+	return nil
+}
+
+func (uc *ResumeUsecase) AdminCreate(ctx context.Context, resume *entity.Resume) error {
+	fmt.Printf("Starting admin resume creation\n")
+
+	// Для админа пропускаем проверку роли пользователя
+	fmt.Printf("Creating resume in repository\n")
+	err := uc.resumeRepo.Create(ctx, resume)
+	if err != nil {
+		fmt.Printf("Error creating resume in repository: %v\n", err)
+		return err
+	}
+
+	fmt.Printf("Resume created successfully by admin\n")
+	return nil
 }

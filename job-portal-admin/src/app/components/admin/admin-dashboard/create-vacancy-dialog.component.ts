@@ -6,7 +6,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
-import { ReactiveFormsModule, FormGroup } from '@angular/forms';
+import { MatChipsModule } from '@angular/material/chips';
+import { ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
+import { Vacancy } from '../../../interfaces/interfaces';
 
 @Component({
   selector: 'app-create-vacancy-dialog',
@@ -19,10 +21,11 @@ import { ReactiveFormsModule, FormGroup } from '@angular/forms';
     MatInputModule,
     MatIconModule,
     MatSelectModule,
+    MatChipsModule,
     ReactiveFormsModule
   ],
   template: `
-    <h2 mat-dialog-title>{{ data ? 'Редактировать вакансию' : 'Создать вакансию' }}</h2>
+    <h2 mat-dialog-title>{{ data?.isEdit ? 'Редактировать вакансию' : 'Создать вакансию' }}</h2>
     <mat-dialog-content>
       <form [formGroup]="form">
         <mat-form-field appearance="outline" class="full-width">
@@ -71,6 +74,17 @@ import { ReactiveFormsModule, FormGroup } from '@angular/forms';
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Образование</mat-label>
+          <input matInput formControlName="Education">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Навыки (через запятую)</mat-label>
+          <input matInput formControlName="Skills" placeholder="JavaScript, TypeScript, Angular">
+          <mat-hint>Введите навыки через запятую</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>Статус</mat-label>
           <mat-select formControlName="Status" required>
             <mat-option value="active">Активна</mat-option>
@@ -82,7 +96,7 @@ import { ReactiveFormsModule, FormGroup } from '@angular/forms';
     <mat-dialog-actions align="end">
       <button mat-button (click)="onCancel()">Отмена</button>
       <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!form.valid">
-        {{ data ? 'Сохранить' : 'Создать' }}
+        {{ data?.isEdit ? 'Сохранить' : 'Создать' }}
       </button>
     </mat-dialog-actions>
   `,
@@ -94,6 +108,7 @@ import { ReactiveFormsModule, FormGroup } from '@angular/forms';
     mat-dialog-content {
       max-height: 80vh;
       overflow-y: auto;
+      padding: 20px;
     }
   `]
 })
@@ -101,10 +116,39 @@ export class CreateVacancyDialogComponent {
   form: FormGroup;
 
   constructor(
+    private fb: FormBuilder,
     public dialogRef: MatDialogRef<CreateVacancyDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
-    this.form = data?.form || null;
+    this.form = this.fb.group({
+      Title: ['', Validators.required],
+      Company: ['', Validators.required],
+      Description: ['', Validators.required],
+      Requirements: ['', Validators.required],
+      Responsibilities: ['', Validators.required],
+      Salary: ['', [Validators.required, Validators.min(0)]],
+      Location: ['', Validators.required],
+      EmploymentType: ['full-time', Validators.required],
+      Status: ['active', Validators.required],
+      Education: [''],
+      Skills: ['']
+    });
+
+    if (data?.isEdit && data?.vacancy) {
+      this.form.patchValue({
+        Title: data.vacancy.Title,
+        Company: data.vacancy.Company,
+        Description: data.vacancy.Description,
+        Requirements: data.vacancy.Requirements,
+        Responsibilities: data.vacancy.Responsibilities,
+        Salary: data.vacancy.Salary,
+        Location: data.vacancy.Location,
+        EmploymentType: data.vacancy.EmploymentType,
+        Status: data.vacancy.Status,
+        Education: data.vacancy.Education,
+        Skills: Array.isArray(data.vacancy.Skills) ? data.vacancy.Skills.join(', ') : ''
+      });
+    }
   }
 
   onCancel(): void {
@@ -113,7 +157,13 @@ export class CreateVacancyDialogComponent {
 
   onSubmit(): void {
     if (this.form.valid) {
-      this.dialogRef.close(true);
+      const formValue = this.form.value;
+      const skills = formValue.Skills ? formValue.Skills.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+      
+      this.dialogRef.close({
+        ...formValue,
+        Skills: skills
+      });
     }
   }
 } 

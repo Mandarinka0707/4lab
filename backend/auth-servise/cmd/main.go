@@ -197,6 +197,9 @@ func main() {
 			admin.GET("/vacancies", adminController.GetAllVacancies)
 			admin.GET("/resumes", adminController.GetAllResumes)
 			admin.PUT("/vacancies/:id", adminController.AdminUpdateVacancy)
+			admin.POST("/vacancies", adminController.AdminCreateVacancy)
+			admin.PUT("/resumes/:id", adminController.AdminUpdateResume)
+			admin.POST("/resumes", adminController.AdminCreateResume)
 		}
 	}
 

@@ -34,6 +34,7 @@ export interface Resume {
   experience: string;
   createdAt: string;
   updatedAt: string;
+   status: string;
 }
 
 export interface UserStats {

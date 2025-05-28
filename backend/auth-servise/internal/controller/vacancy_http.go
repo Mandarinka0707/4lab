@@ -18,33 +18,6 @@ func NewVacancyController(uc usecase.VacancyUsecaseInterface) *VacancyController
 	return &VacancyController{uc: uc}
 }
 
-type CreateVacancyRequest struct {
-	Title            string   `json:"title" binding:"required"`
-	Description      string   `json:"description" binding:"required"`
-	Requirements     string   `json:"requirements" binding:"required"`
-	Responsibilities string   `json:"responsibilities" binding:"required"`
-	Salary           int      `json:"salary" binding:"required"`
-	Location         string   `json:"location" binding:"required"`
-	EmploymentType   string   `json:"employmentType" binding:"required"`
-	Company          string   `json:"company" binding:"required"`
-	Skills           []string `json:"skills"`
-	Education        string   `json:"education"`
-}
-
-type UpdateVacancyRequest struct {
-	Title            string   `json:"title" binding:"required"`
-	Description      string   `json:"description" binding:"required"`
-	Requirements     string   `json:"requirements" binding:"required"`
-	Responsibilities string   `json:"responsibilities" binding:"required"`
-	Salary           int      `json:"salary" binding:"required"`
-	Location         string   `json:"location" binding:"required"`
-	EmploymentType   string   `json:"employmentType" binding:"required"`
-	Company          string   `json:"company" binding:"required"`
-	Skills           []string `json:"skills"`
-	Education        string   `json:"education"`
-	Status           string   `json:"status" binding:"required"`
-}
-
 // Create godoc
 // @Summary Создать новую вакансию
 // @Description Создает новую вакансию в системе

@@ -23,6 +23,25 @@ import { useAuth } from '../contexts/AuthContext';
 import { vacancies, applications as applicationsApi, resumes } from '../services/api';
 import { Application, Vacancy, Resume } from '../types';
 
+// Interface for backend response
+interface VacancyResponse {
+  ID: number;
+  EmployerID: number;
+  Title: string;
+  Description: string;
+  Requirements: string;
+  Responsibilities: string;
+  Salary: number;
+  Location: string;
+  EmploymentType: string;
+  Company: string;
+  Status: string;
+  Skills: string[];
+  Education: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+}
+
 const transformApplicationData = (data: any): Application => {
   return {
     id: data.ID || data.id,
@@ -60,8 +79,28 @@ const VacancyResponses: React.FC = () => {
       setError(null);
 
       // Получаем данные вакансии
-      const vacancyData = await vacancies.getById(id!);
-      setVacancy(vacancyData);
+      const rawVacancyData = await vacancies.getById(id!) as unknown as VacancyResponse;
+      // Transform the data to match the Vacancy interface
+      const transformedVacancy: Vacancy = {
+        id: String(rawVacancyData.ID),
+        employerId: String(rawVacancyData.EmployerID),
+        title: rawVacancyData.Title,
+        description: rawVacancyData.Description,
+        requirements: Array.isArray(rawVacancyData.Requirements)
+          ? rawVacancyData.Requirements
+          : [rawVacancyData.Requirements],
+        responsibilities: rawVacancyData.Responsibilities,
+        salary: String(rawVacancyData.Salary),
+        location: rawVacancyData.Location,
+        employmentType: rawVacancyData.EmploymentType,
+        company: rawVacancyData.Company,
+        status: (rawVacancyData.Status || 'active') as 'active' | 'archived',
+        skills: rawVacancyData.Skills || [],
+        education: rawVacancyData.Education,
+        createdAt: rawVacancyData.CreatedAt,
+        updatedAt: rawVacancyData.UpdatedAt
+      };
+      setVacancy(transformedVacancy);
 
       // Получаем все отклики
       const applicationsData = await applicationsApi.getAll();
@@ -93,10 +132,10 @@ const VacancyResponses: React.FC = () => {
         })
       );
 
-      setApplications(applicationsWithResumes as (Application & { resume?: Resume })[]);
+      setApplications(applicationsWithResumes);
     } catch (err: any) {
-      console.error('Error fetching data:', err);
-      setError(err.response?.data?.error || 'Failed to load data');
+      console.error('Failed to fetch data:', err);
+      setError(err.response?.data?.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }

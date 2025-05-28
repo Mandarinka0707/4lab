@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
-import { User, Vacancy, Resume } from '../interfaces';
+import { User, Vacancy, Resume } from '../interfaces/interfaces';
 import { environment } from '../../environments/environment';
 
 interface LoginResponse {
@@ -143,12 +143,30 @@ export class AdminService {
   }
 
   createVacancy(vacancy: Partial<Vacancy>): Observable<Vacancy> {
-    return this.http.post<Vacancy>(`${this.apiUrl}/vacancies`, vacancy, this.getHttpOptions())
-      .pipe(catchError(this.handleError));
+    console.log('Creating vacancy with data:', vacancy);
+    const url = this.apiUrl.replace('/admin', '') + '/admin/vacancies';
+    
+    // Ensure EmployerID is set and is a number
+    const payload = {
+      ...vacancy,
+      EmployerID: vacancy.EmployerID || 1, // Default to ID 1 if not provided
+      Status: vacancy.Status || 'active'
+    };
+    
+    console.log('Sending payload:', payload);
+    return this.http.post<Vacancy>(url, payload, this.getHttpOptions())
+      .pipe(
+        tap(response => console.log('Admin vacancy create response:', response)),
+        catchError(error => {
+          console.error('Admin vacancy create error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   updateVacancy(id: number, vacancy: Partial<Vacancy>): Observable<Vacancy> {
-    return this.http.put<Vacancy>(`${this.apiUrl}/admin/vacancies/${id}`, vacancy, this.getHttpOptions())
+    const url = this.apiUrl.replace('/admin', '') + '/admin/vacancies/' + id;
+    return this.http.put<Vacancy>(url, vacancy, this.getHttpOptions())
       .pipe(
         tap(response => console.log('Admin vacancy update response:', response)),
         catchError(error => {
@@ -159,7 +177,8 @@ export class AdminService {
   }
 
   deleteVacancy(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/vacancies/${id}`, this.getHttpOptions())
+    const url = this.apiUrl.replace('/admin', '') + '/admin/vacancies/' + id;
+    return this.http.delete<void>(url, this.getHttpOptions())
       .pipe(catchError(this.handleError));
   }
 
@@ -175,13 +194,35 @@ export class AdminService {
   }
 
   createResume(resume: Partial<Resume>): Observable<Resume> {
-    return this.http.post<Resume>(`${this.apiUrl}/resumes`, resume, this.getHttpOptions())
-      .pipe(catchError(this.handleError));
+    const url = this.apiUrl.replace('/admin', '') + '/admin/resumes';
+    const payload = {
+      ...resume,
+      status: 'active'
+    };
+    return this.http.post<Resume>(url, payload, this.getHttpOptions())
+      .pipe(
+        tap(response => console.log('Admin resume create response:', response)),
+        catchError(error => {
+          console.error('Admin resume create error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   updateResume(id: number, resume: Partial<Resume>): Observable<Resume> {
-    return this.http.put<Resume>(`${this.apiUrl}/resumes/${id}`, resume, this.getHttpOptions())
-      .pipe(catchError(this.handleError));
+    const url = this.apiUrl.replace('/admin', '') + '/admin/resumes/' + id;
+    const payload = {
+      ...resume,
+      status: 'active'
+    };
+    return this.http.put<Resume>(url, payload, this.getHttpOptions())
+      .pipe(
+        tap(response => console.log('Admin resume update response:', response)),
+        catchError(error => {
+          console.error('Admin resume update error:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   deleteResume(id: number): Observable<void> {

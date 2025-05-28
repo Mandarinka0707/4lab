@@ -9,7 +9,6 @@ import (
 
 	"github.com/Mandarinka0707/newRepoGOODarhit/internal/entity"
 	"github.com/jmoiron/sqlx"
-	"github.com/lib/pq"
 )
 
 // StringArray is a custom type that implements sql.Scanner and driver.Valuer
@@ -73,12 +72,15 @@ func NewResumeRepository(db *sqlx.DB) *ResumeRepository {
 func (r *ResumeRepository) Create(ctx context.Context, resume *entity.Resume) error {
 	query := `
 		INSERT INTO resumes (user_id, title, description, skills, experience, education, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)
 		RETURNING id`
 
 	now := time.Now()
 	resume.CreatedAt = now
 	resume.UpdatedAt = now
+
+	// Convert skills array to JSON string
+	skillsJSON := fmt.Sprintf(`["%s"]`, strings.Join(resume.Skills, `","`))
 
 	err := r.db.QueryRowContext(
 		ctx,
@@ -86,7 +88,7 @@ func (r *ResumeRepository) Create(ctx context.Context, resume *entity.Resume) er
 		resume.UserID,
 		resume.Title,
 		resume.Description,
-		pq.Array(resume.Skills),
+		skillsJSON,
 		resume.Experience,
 		resume.Education,
 		resume.Status,
@@ -230,17 +232,20 @@ func (r *ResumeRepository) GetResumesByUserID(ctx context.Context, userID int64)
 func (r *ResumeRepository) Update(ctx context.Context, resume *entity.Resume) error {
 	query := `
 		UPDATE resumes
-		SET title = $1, description = $2, skills = $3, experience = $4, education = $5, status = $6, updated_at = $7
+		SET title = $1, description = $2, skills = $3::jsonb, experience = $4, education = $5, status = $6, updated_at = $7
 		WHERE id = $8`
 
 	resume.UpdatedAt = time.Now()
+
+	// Convert skills array to JSON string
+	skillsJSON := fmt.Sprintf(`["%s"]`, strings.Join(resume.Skills, `","`))
 
 	result, err := r.db.ExecContext(
 		ctx,
 		query,
 		resume.Title,
 		resume.Description,
-		pq.Array(resume.Skills),
+		skillsJSON,
 		resume.Experience,
 		resume.Education,
 		resume.Status,
